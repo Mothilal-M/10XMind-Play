@@ -39,6 +39,7 @@ import {
   downloadTestWiseReports,
   downloadCompletionSummaryCSV,
   downloadSpecializedTestReports,
+  downloadAllGameDetailedReports,
   generateCompletionStats,
   CompletionStats,
   ExportData 
@@ -422,6 +423,22 @@ export function AdminDashboard() {
     }
   }
 
+  const handleDownloadAllGameReports = async () => {
+    const exportData: ExportData = {
+      students,
+      results: gameResults || [],
+      selectedStudent: 'all',
+      selectedGame: 'all'
+    }
+    try {
+      await downloadAllGameDetailedReports(exportData)
+      toast.success('All game detailed reports ZIP downloaded')
+    } catch (error) {
+      toast.error('Failed to generate all game reports')
+      console.error('All game reports export error:', error)
+    }
+  }
+
   const handleDownloadCompletionSummary = () => {
     const exportData: ExportData = {
       students,
@@ -560,6 +577,10 @@ export function AdminDashboard() {
                       <Files size={16} className="text-teal-600" />
                       <span>Test-wise Reports (ZIP)</span>
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleDownloadAllGameReports} className="gap-2 cursor-pointer">
+                      <Files size={16} className="text-emerald-600" />
+                      <span>All Game Reports (ZIP)</span>
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={handleDownloadCompletionSummary} className="gap-2 cursor-pointer">
                       <ClipboardText size={16} className="text-orange-600" />
                       <span>Completion Summary (CSV)</span>
@@ -578,13 +599,23 @@ export function AdminDashboard() {
                 </Button>
               </motion.div>
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={handleDownloadSpecializedReports}
                   className="gap-2 border-pink-500/50 hover:bg-pink-500/10 hover:text-pink-600 hover:border-pink-500"
                 >
                   <Brain size={16} />
                   Stroop & TMT
+                </Button>
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  variant="outline"
+                  onClick={handleDownloadAllGameReports}
+                  className="gap-2 border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-600 hover:border-emerald-500"
+                >
+                  <Files size={16} />
+                  All Game Reports
                 </Button>
               </motion.div>
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>

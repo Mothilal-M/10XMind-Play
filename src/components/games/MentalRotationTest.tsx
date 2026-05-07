@@ -148,6 +148,10 @@ export function MentalRotationTest({ onComplete, onExit }: MentalRotationTestPro
       const totalDifferentFigureErrors = questionResults.reduce((sum, q) => sum + q.differentFigureErrors, 0)
       
       const avgRT = results.reduce((sum, r) => sum + r.reactionTime, 0) / results.length
+      const correctTrials = results.filter(r => r.correct)
+      const correctRT = correctTrials.length > 0
+        ? correctTrials.reduce((sum, r) => sum + r.reactionTime, 0) / correctTrials.length
+        : 0
 
       onComplete(results, {
         score: totalCorrectSelections,
@@ -162,7 +166,9 @@ export function MentalRotationTest({ onComplete, onExit }: MentalRotationTestPro
           incorrectSelections: totalIncorrectSelections,
           mirrorErrors: totalMirrorErrors,
           differentFigureErrors: totalDifferentFigureErrors,
-          avgReactionTime: Math.round(avgRT)
+          avgReactionTime: Math.round(avgRT),
+          meanReactionTime: Math.round(avgRT),
+          correctReactionTime: Math.round(correctRT)
         }
       })
       return
