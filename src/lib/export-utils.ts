@@ -851,6 +851,323 @@ export function generateTrailMakingDetailedCSV(data: ExportData): string {
   return csvContent
 }
 
+// Generate Forward / Backward Digit Span detailed CSV
+function generateDigitSpanDetailedCSV(
+  data: ExportData,
+  gameId: 'digit-span-forward' | 'digit-span-backward',
+  title: string
+): string {
+  const { students, results } = data
+  const studentIds = new Set(students.filter(s => s.role === 'student').map(s => s.id))
+  const dsResults = results.filter(r => r.gameId === gameId && studentIds.has(r.userId))
+
+  const headers = [
+    'Roll Number',
+    'Student Name',
+    'Student Email',
+    'Longest Correct Sequence',
+    'Total Correct Sequences',
+    'Total Incorrect Sequences',
+    'Total Trials',
+    'Accuracy (%)',
+    'Average Reaction Time (ms)',
+    'Score',
+    'Completion Date'
+  ]
+
+  const sortedStudents = sortStudentsByRollNo(students.filter(s => s.role === 'student'))
+
+  const rows = sortedStudents.map(student => {
+    const studentResult = dsResults.find(r => r.userId === student.id)
+
+    if (!studentResult) {
+      return [
+        student.rollNo || 'N/A',
+        student.name || 'N/A',
+        student.email,
+        'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'Not Completed'
+      ]
+    }
+
+    const details = studentResult.details || {}
+    const totalTrials = details.totalTrials ?? null
+    const correctSequences = details.correctSequences ?? null
+    const incorrectSequences = (totalTrials !== null && correctSequences !== null)
+      ? totalTrials - correctSequences
+      : null
+    const longestCorrect = details.maxSpan ?? details.longestCorrectSequence ?? null
+
+    return [
+      student.rollNo || 'N/A',
+      student.name || 'N/A',
+      student.email,
+      longestCorrect !== null ? longestCorrect.toString() : 'N/A',
+      correctSequences !== null ? correctSequences.toString() : 'N/A',
+      incorrectSequences !== null ? incorrectSequences.toString() : 'N/A',
+      totalTrials !== null ? totalTrials.toString() : 'N/A',
+      studentResult.accuracy?.toFixed(2) || 'N/A',
+      studentResult.reactionTime?.toFixed(0) || 'N/A',
+      studentResult.score?.toString() || 'N/A',
+      new Date(studentResult.timestamp).toLocaleString()
+    ]
+  })
+
+  return [
+    `${title} - DETAILED RESULTS`,
+    `Generated: ${new Date().toLocaleString()}`,
+    `Total Students: ${sortedStudents.length}`,
+    `Students Completed: ${dsResults.length}`,
+    '',
+    headers.join(','),
+    ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+  ].join('\n')
+}
+
+export function generateForwardDigitSpanDetailedCSV(data: ExportData): string {
+  return generateDigitSpanDetailedCSV(data, 'digit-span-forward', 'FORWARD DIGIT SPAN TEST')
+}
+
+export function generateBackwardDigitSpanDetailedCSV(data: ExportData): string {
+  return generateDigitSpanDetailedCSV(data, 'digit-span-backward', 'BACKWARD DIGIT SPAN TEST')
+}
+
+// Generate Mental Rotation Test detailed CSV
+export function generateMentalRotationDetailedCSV(data: ExportData): string {
+  const { students, results } = data
+  const studentIds = new Set(students.filter(s => s.role === 'student').map(s => s.id))
+  const mrtResults = results.filter(r => r.gameId === 'mental-rotation' && studentIds.has(r.userId))
+
+  const headers = [
+    'Roll Number',
+    'Student Name',
+    'Student Email',
+    'Total Questions',
+    'Correct Selections',
+    'Incorrect Selections',
+    'Accuracy (%)',
+    'Mean Reaction Time (ms)',
+    'Reaction Time - Correct Only (ms)',
+    'Mirror Errors',
+    'Different Figure Errors',
+    'Score',
+    'Completion Date'
+  ]
+
+  const sortedStudents = sortStudentsByRollNo(students.filter(s => s.role === 'student'))
+
+  const rows = sortedStudents.map(student => {
+    const studentResult = mrtResults.find(r => r.userId === student.id)
+
+    if (!studentResult) {
+      return [
+        student.rollNo || 'N/A',
+        student.name || 'N/A',
+        student.email,
+        'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'Not Completed'
+      ]
+    }
+
+    const details = studentResult.details || {}
+    const meanRT = details.meanReactionTime ?? details.avgReactionTime ?? studentResult.reactionTime ?? null
+    const correctRT = details.correctReactionTime ?? null
+
+    return [
+      student.rollNo || 'N/A',
+      student.name || 'N/A',
+      student.email,
+      details.totalQuestions?.toString() || 'N/A',
+      details.correctSelections?.toString() || 'N/A',
+      details.incorrectSelections?.toString() || 'N/A',
+      studentResult.accuracy?.toFixed(2) || 'N/A',
+      meanRT !== null ? Number(meanRT).toFixed(0) : 'N/A',
+      correctRT !== null ? Number(correctRT).toFixed(0) : 'N/A',
+      details.mirrorErrors?.toString() || 'N/A',
+      details.differentFigureErrors?.toString() || 'N/A',
+      studentResult.score?.toString() || 'N/A',
+      new Date(studentResult.timestamp).toLocaleString()
+    ]
+  })
+
+  return [
+    'MENTAL ROTATION TEST - DETAILED RESULTS',
+    `Generated: ${new Date().toLocaleString()}`,
+    `Total Students: ${sortedStudents.length}`,
+    `Students Completed: ${mrtResults.length}`,
+    '',
+    headers.join(','),
+    ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+  ].join('\n')
+}
+
+// Generate Dichotic Listening Test detailed CSV
+export function generateDichoticListeningDetailedCSV(data: ExportData): string {
+  const { students, results } = data
+  const studentIds = new Set(students.filter(s => s.role === 'student').map(s => s.id))
+  const dlResults = results.filter(r => r.gameId === 'dichotic-listening' && studentIds.has(r.userId))
+
+  const headers = [
+    'Roll Number',
+    'Student Name',
+    'Student Email',
+    'Right Ear Score (%)',
+    'Left Ear Score (%)',
+    'Right Ear Correct',
+    'Left Ear Correct',
+    'Ear Advantage (R - L)',
+    'Total Correct',
+    'Accuracy (%)',
+    'Average Reaction Time (ms)',
+    'Completion Date'
+  ]
+
+  const sortedStudents = sortStudentsByRollNo(students.filter(s => s.role === 'student'))
+
+  const rows = sortedStudents.map(student => {
+    const studentResult = dlResults.find(r => r.userId === student.id)
+
+    if (!studentResult) {
+      return [
+        student.rollNo || 'N/A',
+        student.name || 'N/A',
+        student.email,
+        'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'Not Completed'
+      ]
+    }
+
+    const details = studentResult.details || {}
+    const rightCorrect = details.rightEarCorrect ?? null
+    const leftCorrect = details.leftEarCorrect ?? null
+    let earAdv = details.earAdvantage
+    if (earAdv === undefined && rightCorrect !== null && leftCorrect !== null) {
+      earAdv = rightCorrect - leftCorrect
+    }
+
+    return [
+      student.rollNo || 'N/A',
+      student.name || 'N/A',
+      student.email,
+      details.rightEarScore !== undefined ? Number(details.rightEarScore).toFixed(2) : 'N/A',
+      details.leftEarScore !== undefined ? Number(details.leftEarScore).toFixed(2) : 'N/A',
+      rightCorrect !== null ? rightCorrect.toString() : 'N/A',
+      leftCorrect !== null ? leftCorrect.toString() : 'N/A',
+      earAdv !== undefined && earAdv !== null ? Number(earAdv).toFixed(2) : 'N/A',
+      details.totalCorrect?.toString() || 'N/A',
+      studentResult.accuracy?.toFixed(2) || 'N/A',
+      studentResult.reactionTime?.toFixed(0) || 'N/A',
+      new Date(studentResult.timestamp).toLocaleString()
+    ]
+  })
+
+  return [
+    'DICHOTIC LISTENING TEST - DETAILED RESULTS',
+    `Generated: ${new Date().toLocaleString()}`,
+    `Total Students: ${sortedStudents.length}`,
+    `Students Completed: ${dlResults.length}`,
+    '',
+    headers.join(','),
+    ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+  ].join('\n')
+}
+
+// Helper: classify EHI laterality quotient using Edinburgh Handedness Inventory ranges
+function classifyLQ(lq: number): string {
+  if (lq === 100) return 'Strong RH'
+  if (lq >= 40) return 'Moderate RH'
+  if (lq >= -39) return 'Mixed Handed'
+  if (lq > -100) return 'Moderate LH'
+  return 'Strong LH'
+}
+
+// Generate Edinburgh Handedness Inventory detailed CSV
+export function generateHandednessDetailedCSV(data: ExportData): string {
+  const { students, results } = data
+  const studentIds = new Set(students.filter(s => s.role === 'student').map(s => s.id))
+  const ehiResults = results.filter(r => r.gameId === 'handedness-inventory' && studentIds.has(r.userId))
+
+  const headers = [
+    'Roll Number',
+    'Student Name',
+    'Student Email',
+    'Laterality Quotient (LQ)',
+    'Classification',
+    'Handedness',
+    'Total Score',
+    'Completion Date'
+  ]
+
+  const sortedStudents = sortStudentsByRollNo(students.filter(s => s.role === 'student'))
+
+  const rows = sortedStudents.map(student => {
+    const studentResult = ehiResults.find(r => r.userId === student.id)
+
+    if (!studentResult) {
+      return [
+        student.rollNo || 'N/A',
+        student.name || 'N/A',
+        student.email,
+        'N/A', 'N/A', 'N/A', 'N/A', 'Not Completed'
+      ]
+    }
+
+    const details = studentResult.details || {}
+    const lq = details.lateralityQuotient
+    const classification = details.classification ?? (typeof lq === 'number' ? classifyLQ(lq) : 'N/A')
+
+    return [
+      student.rollNo || 'N/A',
+      student.name || 'N/A',
+      student.email,
+      typeof lq === 'number' ? lq.toFixed(2) : 'N/A',
+      classification || 'N/A',
+      details.handedness || 'N/A',
+      details.totalScore?.toString() || 'N/A',
+      new Date(studentResult.timestamp).toLocaleString()
+    ]
+  })
+
+  return [
+    'EDINBURGH HANDEDNESS INVENTORY - DETAILED RESULTS',
+    `Generated: ${new Date().toLocaleString()}`,
+    `Total Students: ${sortedStudents.length}`,
+    `Students Completed: ${ehiResults.length}`,
+    '',
+    'Classification ranges (LQ):',
+    '  +100         : Strong Right-Handed',
+    '  +40 to +99   : Moderate Right-Handed',
+    '  -39 to +39   : Mixed Handed',
+    '  -40 to -99   : Moderate Left-Handed',
+    '  -100         : Strong Left-Handed',
+    '',
+    headers.join(','),
+    ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+  ].join('\n')
+}
+
+// Download all 7 game-specific detailed reports as a single ZIP
+export async function downloadAllGameDetailedReports(data: ExportData): Promise<void> {
+  const JSZip = (await import('jszip')).default
+  const zip = new JSZip()
+
+  zip.file('1-Stroop-Test-Detailed-Results.csv', generateStroopDetailedCSV(data))
+  zip.file('2-Forward-Digit-Span-Detailed-Results.csv', generateForwardDigitSpanDetailedCSV(data))
+  zip.file('3-Backward-Digit-Span-Detailed-Results.csv', generateBackwardDigitSpanDetailedCSV(data))
+  zip.file('4-Trail-Making-Test-Detailed-Results.csv', generateTrailMakingDetailedCSV(data))
+  zip.file('5-Mental-Rotation-Test-Detailed-Results.csv', generateMentalRotationDetailedCSV(data))
+  zip.file('6-Dichotic-Listening-Test-Detailed-Results.csv', generateDichoticListeningDetailedCSV(data))
+  zip.file('7-Edinburgh-Handedness-Inventory-Detailed-Results.csv', generateHandednessDetailedCSV(data))
+
+  const blob = await zip.generateAsync({ type: 'blob' })
+  const link = document.createElement('a')
+  const url = URL.createObjectURL(blob)
+
+  link.setAttribute('href', url)
+  link.setAttribute('download', `all-game-detailed-reports-${new Date().toISOString().split('T')[0]}.zip`)
+  link.style.visibility = 'hidden'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
 // Download specialized test reports (Stroop + Trail Making) as ZIP
 export async function downloadSpecializedTestReports(data: ExportData): Promise<void> {
   const JSZip = (await import('jszip')).default
