@@ -139,11 +139,21 @@ export function StroopTask({ onComplete, onExit }: StroopTaskProps) {
       // Calculate Stroop Interference Effect: RT(incongruent) - RT(congruent)
       const stroopInterferenceEffect = incongruentRT - congruentRT
       
-      // Error rates (number of incorrect responses)
+      // Error counts (number of incorrect responses)
       const congruentErrors = congruentTrials.filter(r => !r.correct).length
       const incongruentErrors = incongruentTrials.filter(r => !r.correct).length
       const totalErrors = TOTAL_TRIALS - totalCorrect
-      
+
+      // Error rates as a percentage of trials in each condition
+      const congruentErrorRate = congruentTrials.length > 0
+        ? (congruentErrors / congruentTrials.length) * 100
+        : 0
+      const incongruentErrorRate = incongruentTrials.length > 0
+        ? (incongruentErrors / incongruentTrials.length) * 100
+        : 0
+      // Error Interference: Error%(incongruent) - Error%(congruent)
+      const errorInterference = incongruentErrorRate - congruentErrorRate
+
       // Calculate congruent and incongruent correct counts
       const congruentCorrectCount = congruentTrials.filter(r => r.correct).length
       const incongruentCorrectCount = incongruentTrials.filter(r => r.correct).length
@@ -160,6 +170,9 @@ export function StroopTask({ onComplete, onExit }: StroopTaskProps) {
           stroopInterferenceEffect,
           congruentErrors,
           incongruentErrors,
+          congruentErrorRate,
+          incongruentErrorRate,
+          errorInterference,
           totalErrors,
           congruentTrials: congruentTrials.length,
           incongruentTrials: incongruentTrials.length,

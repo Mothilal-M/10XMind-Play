@@ -710,6 +710,9 @@ export function generateStroopDetailedCSV(data: ExportData): string {
     'Stroop Interference Effect (ms)',
     'Congruent Errors',
     'Incongruent Errors',
+    'Congruent Error Rate (%)',
+    'Incongruent Error Rate (%)',
+    'Error Interference (%)',
     'Total Errors',
     'Error Rate (%)',
     'Accuracy (%)',
@@ -728,12 +731,12 @@ export function generateStroopDetailedCSV(data: ExportData): string {
         student.rollNo || 'N/A',
         student.name || 'N/A',
         student.email,
-        'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'Not Completed'
+        'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'Not Completed'
       ]
     }
 
     const details = studentResult.details || {}
-    
+
     // Map field names from database (averageCongruentRT) or new format (congruentRT)
     const congruentRT = details.congruentRT ?? details.averageCongruentRT ?? null
     const incongruentRT = details.incongruentRT ?? details.averageIncongruentRT ?? null
@@ -747,11 +750,22 @@ export function generateStroopDetailedCSV(data: ExportData): string {
     // Calculate errors from accuracy if not directly available
     const congruentTrials = details.congruentTrials || 48
     const incongruentTrials = details.incongruentTrials || 48
-    const congruentErrors = details.congruentErrors ?? 
+    const congruentErrors = details.congruentErrors ??
       (details.congruentAccuracy !== undefined ? Math.round(congruentTrials * (1 - details.congruentAccuracy)) : null)
-    const incongruentErrors = details.incongruentErrors ?? 
+    const incongruentErrors = details.incongruentErrors ??
       (details.incongruentAccuracy !== undefined ? Math.round(incongruentTrials * (1 - details.incongruentAccuracy)) : null)
-    
+
+    // Error rates (%) per condition - use stored value, else derive from error counts
+    const congruentErrorRate = details.congruentErrorRate ??
+      (congruentErrors !== null && congruentTrials > 0 ? (congruentErrors / congruentTrials) * 100 : null)
+    const incongruentErrorRate = details.incongruentErrorRate ??
+      (incongruentErrors !== null && incongruentTrials > 0 ? (incongruentErrors / incongruentTrials) * 100 : null)
+    // Error Interference: Error%(incongruent) - Error%(congruent)
+    let errorInterference = details.errorInterference
+    if (errorInterference === undefined && congruentErrorRate !== null && incongruentErrorRate !== null) {
+      errorInterference = incongruentErrorRate - congruentErrorRate
+    }
+
     return [
       student.rollNo || 'N/A',
       student.name || 'N/A',
@@ -761,6 +775,9 @@ export function generateStroopDetailedCSV(data: ExportData): string {
       stroopEffect !== null && stroopEffect !== undefined ? stroopEffect.toFixed(2) : 'N/A',
       congruentErrors !== null ? congruentErrors.toString() : 'N/A',
       incongruentErrors !== null ? incongruentErrors.toString() : 'N/A',
+      congruentErrorRate !== null ? congruentErrorRate.toFixed(2) : 'N/A',
+      incongruentErrorRate !== null ? incongruentErrorRate.toFixed(2) : 'N/A',
+      errorInterference !== null && errorInterference !== undefined ? errorInterference.toFixed(2) : 'N/A',
       details.totalErrors?.toString() || studentResult.errorCount?.toString() || 'N/A',
       studentResult.errorRate?.toFixed(2) || 'N/A',
       studentResult.accuracy?.toFixed(2) || 'N/A',
@@ -792,48 +809,62 @@ export function generateTrailMakingDetailedCSV(data: ExportData): string {
     'Roll Number',
     'Student Name',
     'Student Email',
-    'TMT-A Time (ms)',
-    'TMT-B Time (ms)',
-    'B-A Difference (ms)',
+    'TMT-A Time (s)',
+    'TMT-B Time (s)',
+    'B-A Difference (s)',
+    'B/A Ratio',
     'TMT-A Errors',
     'TMT-B Errors',
     'Total Errors',
     'Error Rate (%)',
     'Accuracy (%)',
-    'Total Time (ms)',
+    'Total Time (s)',
     'Completion Date'
   ]
 
   // Sort students by roll number
   const sortedStudents = sortStudentsByRollNo(students.filter(s => s.role === 'student'))
 
+  // Convert a millisecond value to a seconds string (2 dp)
+  const msToSeconds = (ms: number | null | undefined): string =>
+    ms !== null && ms !== undefined && !isNaN(Number(ms)) ? (Number(ms) / 1000).toFixed(2) : 'N/A'
+
   const rows = sortedStudents.map(student => {
     const studentResult = tmtResults.find(r => r.userId === student.id)
-    
+
     if (!studentResult) {
       return [
         student.rollNo || 'N/A',
         student.name || 'N/A',
         student.email,
-        'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'Not Completed'
+        'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'Not Completed'
       ]
     }
 
     const details = studentResult.details || {}
-    
+
+    // B/A ratio: use stored value, else derive from TMT-A / TMT-B times
+    const tmtAMs = details.tmtATime
+    const tmtBMs = details.tmtBTime
+    let baRatio = details.baRatio !== undefined ? Number(details.baRatio) : undefined
+    if (baRatio === undefined && tmtAMs && tmtBMs && Number(tmtAMs) > 0) {
+      baRatio = Number(tmtBMs) / Number(tmtAMs)
+    }
+
     return [
       student.rollNo || 'N/A',
       student.name || 'N/A',
       student.email,
-      details.tmtATime?.toString() || 'N/A',
-      details.tmtBTime?.toString() || 'N/A',
-      details.differenceScore?.toString() || 'N/A',
+      msToSeconds(tmtAMs),
+      msToSeconds(tmtBMs),
+      msToSeconds(details.differenceScore),
+      baRatio !== undefined && !isNaN(baRatio) ? baRatio.toFixed(3) : 'N/A',
       details.tmtAErrors?.toString() || 'N/A',
       details.tmtBErrors?.toString() || 'N/A',
       details.totalErrors?.toString() || studentResult.errorCount?.toString() || 'N/A',
       studentResult.errorRate?.toFixed(2) || 'N/A',
       studentResult.accuracy?.toFixed(2) || 'N/A',
-      studentResult.score?.toString() || 'N/A',
+      msToSeconds(studentResult.score),
       new Date(studentResult.timestamp).toLocaleString()
     ]
   })
@@ -929,6 +960,86 @@ export function generateForwardDigitSpanDetailedCSV(data: ExportData): string {
 
 export function generateBackwardDigitSpanDetailedCSV(data: ExportData): string {
   return generateDigitSpanDetailedCSV(data, 'digit-span-backward', 'BACKWARD DIGIT SPAN TEST')
+}
+
+// Generate combined Digit Span CSV joining each student's Forward + Backward results
+export function generateDigitSpanCombinedDetailedCSV(data: ExportData): string {
+  const { students, results } = data
+  const studentIds = new Set(students.filter(s => s.role === 'student').map(s => s.id))
+  const forwardResults = results.filter(r => r.gameId === 'digit-span-forward' && studentIds.has(r.userId))
+  const backwardResults = results.filter(r => r.gameId === 'digit-span-backward' && studentIds.has(r.userId))
+
+  const headers = [
+    'Roll Number',
+    'Student Name',
+    'Student Email',
+    'Forward Span Score',
+    'Backward Span Score',
+    'Total Score (Forward + Backward)',
+    'Forward Correct Sequences',
+    'Backward Correct Sequences',
+    'Forward Completed',
+    'Backward Completed',
+    'Completion Date'
+  ]
+
+  const sortedStudents = sortStudentsByRollNo(students.filter(s => s.role === 'student'))
+
+  // Extract the span score (longest correct sequence) from a digit span result
+  const spanOf = (result?: GameResult): number | null => {
+    if (!result) return null
+    const details = result.details || {}
+    return details.maxSpan ?? details.longestCorrectSequence ?? result.score ?? null
+  }
+  const correctSeqOf = (result?: GameResult): number | null => {
+    if (!result) return null
+    return result.details?.correctSequences ?? null
+  }
+
+  const rows = sortedStudents.map(student => {
+    const forward = forwardResults.find(r => r.userId === student.id)
+    const backward = backwardResults.find(r => r.userId === student.id)
+
+    const forwardSpan = spanOf(forward)
+    const backwardSpan = spanOf(backward)
+    // Total Score = Forward + Backward combined (only when both tests are completed)
+    const totalScore = (forwardSpan !== null && backwardSpan !== null)
+      ? forwardSpan + backwardSpan
+      : null
+
+    const latestTimestamp = [forward?.timestamp, backward?.timestamp]
+      .filter((t): t is number => typeof t === 'number')
+      .reduce((max, t) => Math.max(max, t), 0)
+
+    return [
+      student.rollNo || 'N/A',
+      student.name || 'N/A',
+      student.email,
+      forwardSpan !== null ? forwardSpan.toString() : 'N/A',
+      backwardSpan !== null ? backwardSpan.toString() : 'N/A',
+      totalScore !== null ? totalScore.toString() : 'N/A',
+      correctSeqOf(forward) !== null ? correctSeqOf(forward)!.toString() : 'N/A',
+      correctSeqOf(backward) !== null ? correctSeqOf(backward)!.toString() : 'N/A',
+      forward ? 'Yes' : 'No',
+      backward ? 'Yes' : 'No',
+      latestTimestamp > 0 ? new Date(latestTimestamp).toLocaleString() : 'Not Completed'
+    ]
+  })
+
+  const completedBoth = sortedStudents.filter(s =>
+    forwardResults.some(r => r.userId === s.id) && backwardResults.some(r => r.userId === s.id)
+  ).length
+
+  return [
+    'DIGIT SPAN (COMBINED FORWARD + BACKWARD) - DETAILED RESULTS',
+    `Generated: ${new Date().toLocaleString()}`,
+    `Total Students: ${sortedStudents.length}`,
+    `Completed Both Tests: ${completedBoth}`,
+    'Note: Total Score is shown only when both Forward and Backward tests are completed.',
+    '',
+    headers.join(','),
+    ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+  ].join('\n')
 }
 
 // Generate Mental Rotation Test detailed CSV
@@ -1151,10 +1262,11 @@ export async function downloadAllGameDetailedReports(data: ExportData): Promise<
   zip.file('1-Stroop-Test-Detailed-Results.csv', generateStroopDetailedCSV(data))
   zip.file('2-Forward-Digit-Span-Detailed-Results.csv', generateForwardDigitSpanDetailedCSV(data))
   zip.file('3-Backward-Digit-Span-Detailed-Results.csv', generateBackwardDigitSpanDetailedCSV(data))
-  zip.file('4-Trail-Making-Test-Detailed-Results.csv', generateTrailMakingDetailedCSV(data))
-  zip.file('5-Mental-Rotation-Test-Detailed-Results.csv', generateMentalRotationDetailedCSV(data))
-  zip.file('6-Dichotic-Listening-Test-Detailed-Results.csv', generateDichoticListeningDetailedCSV(data))
-  zip.file('7-Edinburgh-Handedness-Inventory-Detailed-Results.csv', generateHandednessDetailedCSV(data))
+  zip.file('4-Digit-Span-Combined-Detailed-Results.csv', generateDigitSpanCombinedDetailedCSV(data))
+  zip.file('5-Trail-Making-Test-Detailed-Results.csv', generateTrailMakingDetailedCSV(data))
+  zip.file('6-Mental-Rotation-Test-Detailed-Results.csv', generateMentalRotationDetailedCSV(data))
+  zip.file('7-Dichotic-Listening-Test-Detailed-Results.csv', generateDichoticListeningDetailedCSV(data))
+  zip.file('8-Edinburgh-Handedness-Inventory-Detailed-Results.csv', generateHandednessDetailedCSV(data))
 
   const blob = await zip.generateAsync({ type: 'blob' })
   const link = document.createElement('a')

@@ -204,9 +204,10 @@ export function TrailMakingTest({ onComplete, onExit }: TrailMakingTestProps) {
           setTimeout(() => {
             // Calculate metrics
             const differenceScore = completedTime - tmtATime // TMTB - TMTA
-            const rateScore = tmtATime / completedTime // TMTA / TMTB
+            const rateScore = tmtATime / completedTime // TMTA / TMTB (legacy field)
+            const baRatio = tmtATime > 0 ? completedTime / tmtATime : 0 // TMTB / TMTA (standard B/A ratio)
             const totalErrors = tmtAErrors + errors
-            
+
             onComplete(results, {
               score: Math.round(tmtATime + completedTime), // Total time for both parts
               accuracy: 100 - ((totalErrors / (25 * 2)) * 100), // Based on 25 circles each
@@ -220,7 +221,8 @@ export function TrailMakingTest({ onComplete, onExit }: TrailMakingTestProps) {
                 tmtBErrors: errors,
                 totalErrors: totalErrors,
                 differenceScore: Math.round(differenceScore),
-                rateScore: rateScore.toFixed(3)
+                rateScore: rateScore.toFixed(3),
+                baRatio: baRatio.toFixed(3)
               }
             })
           }, 2000)
