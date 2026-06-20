@@ -72,7 +72,8 @@ function apiToGameResult(apiResult: any): GameResult {
     accuracy: apiResult.accuracy,
     errorCount: apiResult.errorCount,
     errorRate: apiResult.errorRate,
-    timestamp: apiResult.completedAt,
+    // completed_at is a Postgres BIGINT returned as a string; coerce so `new Date()` works
+    timestamp: Number(apiResult.completedAt),
     details: apiResult.details
   }
 }
